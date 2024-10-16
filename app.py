@@ -9,12 +9,24 @@ from tkinter import Label, messagebox, Button
 from PIL import Image, ImageTk, ImageSequence
 
 from dotenv import load_dotenv
+import logging
 
-load_dotenv()
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('rsteye.log'),
+    ]
+)
 
-POPUP_DURATION = int(os.getenv("POPUP_DURATION", 60))  # Ensure these are integers
-POPUP_INTERVAL = int(os.getenv("POPUP_INTERVAL", 60))  # Ensure these are integers
-
+# load_dotenv()
+try:
+    POPUP_DURATION = int(os.getenv("POPUP_DURATION", 60))  # Ensure these are integers
+    POPUP_INTERVAL = int(os.getenv("POPUP_INTERVAL", 60))  # Ensure these are integers
+    logging.info(f"Loaded settings: POPUP_DURATION={POPUP_DURATION}, POPUP_INTERVAL={POPUP_INTERVAL}")  # Log successful loading
+except ValueError as e:
+    logging.error(f"Error loading environment variables: {e}")
+    raise
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -37,8 +49,10 @@ class RstEyeApp:
 
         if not os.path.exists(self.image_path):
             messagebox.showerror("Error", f"Image file '{self.image_path}' not found.")
+            logging.error(f"Image file '{self.image_path}' not found.")
             self.root.destroy()
             return
+        logging.info(f"App initialized with image path: {self.image_path}")
 
     def show_image(self):
         try:
@@ -77,6 +91,7 @@ class RstEyeApp:
 
             def load_image():
                 # Create the main window for the GIF
+                logging.info("Loading image...")
                 window = tk.Toplevel(self.root)
                 window.withdraw()
                 window.title("Take a Break")
@@ -120,6 +135,10 @@ class RstEyeApp:
                 self.root.after(0, load_image)
 
             def on_exit():
+                try:
+                    logging.info("User chose to exit from the popup.")
+                except Exception as e:
+                    print(f"Logging failed: {e}")
                 popup.destroy()
 
             # Create buttons without specifying foreground or background colors
