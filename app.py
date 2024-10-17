@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 POPUP_DURATION = int(os.getenv("POPUP_DURATION", 60))  # Ensure these are integers
 POPUP_INTERVAL = int(os.getenv("POPUP_INTERVAL", 60))  # Ensure these are integers
 
