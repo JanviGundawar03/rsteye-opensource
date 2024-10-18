@@ -5,16 +5,16 @@ import time
 import tkinter as tk
 import tkinter as ttk
 from tkinter import Label, messagebox, Button
-
+import logging
 from PIL import Image, ImageTk, ImageSequence
 
 from dotenv import load_dotenv
 
 load_dotenv()
 
-
-POPUP_DURATION = int(os.getenv("POPUP_DURATION", 60))  # Ensure these are integers
-POPUP_INTERVAL = int(os.getenv("POPUP_INTERVAL", 60))  # Ensure these are integers
+# Ensure these are integers
+POPUP_DURATION = int(os.getenv("POPUP_DURATION", 60))  
+POPUP_INTERVAL = int(os.getenv("POPUP_INTERVAL", 60)) 
 
 
 def resource_path(relative_path):
@@ -28,6 +28,16 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('rsteye.log'),
+        logging.StreamHandler()
+    ]
+)
+
 class RstEyeApp:
     def __init__(self, image_path, interval=POPUP_INTERVAL * 60, fullscreen=False):
         self.image_path = resource_path(image_path)
@@ -35,9 +45,11 @@ class RstEyeApp:
         self.fullscreen = fullscreen
         self.root = tk.Tk()
         self.root.withdraw()
+        logging.info("Initialized RstEyeApp with image path: %s", self.image_path)
 
         if not os.path.exists(self.image_path):
             messagebox.showerror("Error", f"Image file '{self.image_path}' not found.")
+            logging.error(f"Image file '{self.image_path}' not found.")
             self.root.destroy()
             return
 
@@ -45,7 +57,7 @@ class RstEyeApp:
         try:
             popup = tk.Toplevel(self.root)
             popup.title("Please Wait")
-
+            logging.info("Showing popup window...")
             # Set the popup window size and position it in the center
             popup_width = 350
             popup_height = 200
@@ -55,6 +67,8 @@ class RstEyeApp:
             y = (screen_height / 2) - (popup_height / 2)
             popup.geometry(f"{popup_width}x{popup_height}+{int(x)}+{int(y)}")
 
+            logging.info(f"Popup window created at position ({x}, {y}) with size ({popup_width}x{popup_height}).")
+            
             # Customize the popup window with a background image and better colors
             background_image = ImageTk.PhotoImage(
                 Image.open(resource_path("rsteye.png")).resize(
@@ -75,7 +89,10 @@ class RstEyeApp:
             # Add buttons to the popup window
             button_frame = tk.Frame(popup)
             button_frame.pack(pady=10)
-
+        except Exception as e:
+            logging.error(f"Failed to show image: {e}")
+            messagebox.showerror("Error", f"Failed to show image: {e}")
+            
             def load_image():
                 # Create the main window for the GIF
                 window = tk.Toplevel(self.root)
@@ -107,7 +124,7 @@ class RstEyeApp:
                     label.configure(image=frame)
                     frame_index = (frame_index + 1) % len(frames)
                     window.after(50, update_frame, frame_index)
-
+                    
                 window.after(0, update_frame, 0)
                 window.deiconify()
 
@@ -115,12 +132,18 @@ class RstEyeApp:
                 popup.destroy()
 
                 window.after(POPUP_DURATION * 1000, window.destroy)
+                logging.info(f"Image window will close after {POPUP_DURATION} seconds.")
+        except Exception as e:
+            logging.error(f"Error loading image sequence: {e}")
+            messagebox.showerror("Error", f"Failed to load image: {e}")
 
             # Define button actions
             def on_accept():
+                logging.info("User accepted to view the image.")
                 self.root.after(0, load_image)
 
             def on_exit():
+                logging.info("User declined to view the image.")
                 popup.destroy()
 
             # Create buttons without specifying foreground or background colors
@@ -144,7 +167,6 @@ class RstEyeApp:
                 relief="flat",
             )
             exit_button.pack(side="right", padx=20)
-
             popup.mainloop()
 
         except Exception as e:
@@ -152,16 +174,23 @@ class RstEyeApp:
 
     def start_popup(self):
         while True:
+            logging.info(f"Waiting {self.interval} seconds before showing the next popup.")
             time.sleep(self.interval)
             self.root.after(0, self.show_image)
 
     def start(self):
+        logging.info("Starting the RstEyeApp.")
         self.root.after(0, self.show_image)
         threading.Thread(target=self.start_popup, daemon=True).start()
         self.root.mainloop()
 
 
 if __name__ == "__main__":
-    image_path = "med.gif"
-    app = RstEyeApp(image_path, fullscreen=True)
-    app.start()
+    try:
+        image_path = "med.gif"
+        logging.info("RstEyeApp is starting.")
+        app = RstEyeApp(image_path, fullscreen=True)
+        app.start()
+    except Exception as e:
+        logging.error(f"Unhandled exception occurred: {e}")
+        messagebox.showerror("Fatal Error", f"An error occurred: {e}")
